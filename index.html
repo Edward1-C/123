@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orchestra Admin - 團員行政系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="login-section" class="max-w-md w-full glass-card p-8 rounded-2xl shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold tracking-widest">長榮交響樂</h1>
+            <p class="text-slate-400 mt-2">團員行政管理系統</p>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-1 text-slate-300">團員編號</label>
+                <input type="text" placeholder="Ex: VN-001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <div>
+                <label class="block text-sm mb-1 text-slate-300">密碼</label>
+                <input type="password" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <button onclick="showSection('activity-section')" class="w-full bg-amber-600 hover:bg-amber-500 transition-all text-white font-bold py-3 rounded-lg mt-4 shadow-lg">登入系統</button>
+        </div>
+    </div>
+
+    <div id="activity-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
+        <h2 class="text-2xl font-bold mb-6 border-b border-slate-700 pb-4">選擇參與巡演活動</h2>
+        <div class="space-y-4">
+            <div class="p-4 border border-slate-700 rounded-xl hover:bg-slate-800 cursor-pointer transition-all group" onclick="showSection('form-section')">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-lg group-hover:text-amber-400">2026 春季巡迴：貝多芬之夜</h3>
+                        <p class="text-sm text-slate-400">地點：國家音樂廳、衛武營 | 日期：2026/03/15 - 03/20</p>
+                    </div>
+                    <span class="text-amber-500">→</span>
+                </div>
+            </div>
+            <div class="p-4 border border-slate-700 rounded-xl opacity-50">
+                <h3 class="font-bold text-lg">夏季校園推廣音樂會</h3>
+                <p class="text-sm text-slate-400">尚未開放填表</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
+        <h2 class="text-2xl font-bold mb-2">行政資料填報</h2>
+        <p class="text-slate-400 mb-8 italic">活動：2026 春季巡迴</p>
+        
+        <form id="orchestra-form" onsubmit="event.preventDefault(); showSection('success-section');">
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">1</span> 住宿調查
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <input type="radio" name="hotel" class="mr-3 accent-amber-500" required> 單人房 (需補差額)
+                    </label>
+                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <input type="radio" name="hotel" class="mr-3 accent-amber-500"> 雙人房 (隨機分配)
+                    </label>
+                </div>
+                <input type="text" placeholder="如有指定室友請填寫姓名" class="w-full mt-3 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none">
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span> 膳食調查
+                </h3>
+                <div class="flex gap-6 mb-3">
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500" required> 葷食</label>
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 全素</label>
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 奶蛋素</label>
+                </div>
+                <textarea placeholder="特別忌口或過敏 (如：不吃牛、海鮮過敏)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none h-20"></textarea>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span> 交通調查
+                </h3>
+                <select class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500" required>
+                    <option value="">請選擇往返方式</option>
+                    <option value="group">搭乘樂團大型遊覽車</option>
+                    <option value="self">自行前往 (高鐵/開車)</option>
+                    <option value="partial">單程搭車 / 單程自行前往</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-2">* 註：低音提琴、定音鼓等大件樂器由貨車統一搬運。</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="button" onclick="showSection('activity-section')" class="flex-1 border border-slate-600 py-3 rounded-lg hover:bg-slate-800 transition-all">返回</button>
+                <button type="submit" class="flex-[2] bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg shadow-lg transition-all">確認送出資料</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="success-section" class="max-w-md w-full glass-card p-10 rounded-2xl shadow-2xl hidden text-center">
+        <div class="text-6xl mb-6">🎻</div>
+        <h2 class="text-2xl font-bold mb-2">提交成功！</h2>
+        <p class="text-slate-400 mb-6">您的資料已更新至後端資料庫，<br>預祝演出順利。</p>
+        <button onclick="location.reload()" class="text-amber-500 hover:underline">返回系統首頁</button>
+    </div>
+
+    <script>
+        function showSection(sectionId) {
+            // 隱藏所有區塊
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('activity-section').classList.add('hidden');
+            document.getElementById('form-section').classList.add('hidden');
+            document.getElementById('success-section').classList.add('hidden');
+            
+            // 顯示指定區塊
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
