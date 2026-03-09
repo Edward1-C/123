@@ -1,540 +1,124 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工程師派單系統</title>
-    <!-- Tailwind CSS -->
+    <title>Orchestra Admin - 團員行政系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .animate-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        [x-cloak] { display: none !important; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased">
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <!-- 登入頁面 -->
-    <div id="login-view" class="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 animate-in">
-            <div class="flex flex-col items-center mb-8">
-                <div class="bg-blue-600 p-3 rounded-xl mb-4 text-white">
-                    <i data-lucide="clipboard-list" class="w-8 h-8"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">工程師派單系統</h1>
-                <p class="text-slate-500 font-medium">企業內部報修管理平台</p>
+    <div id="login-section" class="max-w-md w-full glass-card p-8 rounded-2xl shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold tracking-widest">長榮交響樂</h1>
+            <p class="text-slate-400 mt-2">團員行政管理系統</p>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-1 text-slate-300">團員編號</label>
+                <input type="text" placeholder="Ex: VN-001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
             </div>
-            <form class="space-y-4" onsubmit="handleLogin(event)">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">電子郵件</label>
-                    <input type="email" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-slate-50 shadow-inner outline-none" placeholder="service@company.com" required>
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-1">密碼</label>
-                    <input type="password" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-slate-50 shadow-inner outline-none" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 mt-2 active:scale-95">進入系統</button>
-            </form>
+            <div>
+                <label class="block text-sm mb-1 text-slate-300">密碼</label>
+                <input type="password" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+            <button onclick="showSection('activity-section')" class="w-full bg-amber-600 hover:bg-amber-500 transition-all text-white font-bold py-3 rounded-lg mt-4 shadow-lg">登入系統</button>
         </div>
     </div>
 
-    <!-- 主程式介面 (預設隱藏) -->
-    <div id="app-view" class="hidden min-h-screen flex flex-col">
-        <!-- 導航列 -->
-        <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                <div class="flex items-center gap-2 cursor-pointer" onclick="showDashboard()">
-                    <div class="bg-blue-600 p-1.5 rounded-lg text-white font-bold">
-                        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
-                    </div>
-                    <span class="text-xl font-black text-slate-800 tracking-tight">工程師派單系統</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <!-- 通知 -->
-                    <div class="relative">
-                        <button onclick="toggleNotifications()" class="p-2 text-slate-600 hover:bg-slate-100 rounded-full relative transition-colors">
-                            <i data-lucide="bell" class="w-5 h-5"></i>
-                            <span class="absolute top-1 right-1 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-white"></span>
-                        </button>
-                        <div id="notification-dropdown" class="hidden absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden z-50">
-                            <div class="p-4 border-b bg-slate-50 font-bold text-sm text-slate-800">通知中心</div>
-                            <div id="notification-list" class="max-h-60 overflow-y-auto">
-                                <!-- 通知內容動態插入 -->
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 使用者 -->
-                    <div class="flex items-center gap-3 pl-4 border-l">
-                        <p class="text-sm font-bold text-slate-800">Edward</p>
-                        <div class="bg-slate-100 w-9 h-9 rounded-xl flex items-center justify-center text-blue-600 border border-slate-200 shadow-sm">
-                            <i data-lucide="user" class="w-5 h-5"></i>
-                        </div>
-                        <button onclick="handleLogout()" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
-                            <i data-lucide="log-out" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- 主要內容區 -->
-        <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-            <!-- 看板視圖 -->
-            <div id="dashboard-section" class="space-y-6">
-                <div class="flex justify-between items-end">
+    <div id="activity-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
+        <h2 class="text-2xl font-bold mb-6 border-b border-slate-700 pb-4">選擇參與巡演活動</h2>
+        <div class="space-y-4">
+            <div class="p-4 border border-slate-700 rounded-xl hover:bg-slate-800 cursor-pointer transition-all group" onclick="showSection('form-section')">
+                <div class="flex justify-between items-center">
                     <div>
-                        <h1 class="text-3xl font-black text-slate-900 tracking-tight">派單看板</h1>
-                        <p id="stats-text" class="text-slate-500 text-sm mt-1.5 font-medium text-slate-400 font-medium"></p>
+                        <h3 class="font-bold text-lg group-hover:text-amber-400">2026 春季巡迴：貝多芬之夜</h3>
+                        <p class="text-sm text-slate-400">地點：國家音樂廳、衛武營 | 日期：2026/03/15 - 03/20</p>
                     </div>
-                </div>
-
-                <!-- 搜尋與篩選 -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
-                    <div class="flex-1 relative">
-                        <i data-lucide="search" class="absolute left-3.5 top-3 text-slate-400 w-4.5 h-4.5"></i>
-                        <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="搜尋 SDS 單號、標題或設備名稱..." class="w-full pl-11 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-slate-400">
-                        <button id="clear-search" onclick="clearSearch()" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600 bg-slate-200/50 rounded-full p-0.5">
-                            <i data-lucide="x" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <div class="flex gap-4">
-                        <select id="status-filter" onchange="handleFilter()" class="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none cursor-pointer">
-                            <option value="全部">所有狀態</option>
-                            <option value="待處理">待處理</option>
-                            <option value="執行中">執行中</option>
-                            <option value="已完成">已完成</option>
-                        </select>
-                        <select id="factory-filter" onchange="handleFilter()" class="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none cursor-pointer">
-                            <!-- 動態插入廠區 -->
-                        </select>
-                    </div>
-                </div>
-
-                <!-- 列表 -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-                    <div class="p-6 border-b">
-                        <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
-                            <i data-lucide="clipboard-list" class="text-blue-600 w-5 h-5"></i>
-                            工程維修任務列表
-                        </h2>
-                    </div>
-                    <div class="flex-1 overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-                                <tr>
-                                    <th class="px-6 py-4">SDS維修單號 / 標題</th>
-                                    <th class="px-6 py-4">廠區 / 位置</th>
-                                    <th class="px-6 py-4">設備名稱</th>
-                                    <th class="px-6 py-4">報單日期</th>
-                                    <th class="px-6 py-4">狀態</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orders-table-body" class="divide-y divide-slate-100">
-                                <!-- 資料列動態插入 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- 分頁導覽 -->
-                    <div id="pagination-container" class="px-6 py-4 bg-slate-50/50 flex items-center justify-between border-t border-slate-100">
-                        <!-- 分頁控制項動態插入 -->
-                    </div>
+                    <span class="text-amber-500">→</span>
                 </div>
             </div>
-
-            <!-- 詳情視圖 -->
-            <div id="details-section" class="hidden space-y-6">
-                <div>
-                    <h1 class="text-3xl font-black text-slate-900 tracking-tight">任務詳細資訊</h1>
-                    <p id="details-subtitle" class="text-slate-500 text-sm mt-1.5 font-medium"></p>
-                </div>
-                <div id="details-content">
-                    <!-- 詳細內容動態插入 -->
-                </div>
-            </div>
-        </main>
-
-        <!-- 頁尾 -->
-        <footer class="py-10 text-center border-t border-slate-200 bg-white">
-            <div class="flex items-center justify-center gap-2 text-slate-300 mb-2">
-                <i data-lucide="clipboard-list" class="w-4.5 h-4.5"></i>
-                <div class="w-px h-4 bg-slate-200"></div>
-                <span class="text-[10px] font-black tracking-[0.3em] uppercase">Engineer Dispatch System v2.2</span>
-            </div>
-            <p class="text-slate-400 text-[10px] font-bold uppercase italic tracking-widest opacity-80">工程師派單系統</p>
-        </footer>
-    </div>
-
-    <!-- 狀態更新 Modal -->
-    <div id="status-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                <h3 class="font-bold text-slate-800">變更目前維修進度</h3>
-                <button onclick="closeStatusModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="p-2 space-y-1">
-                <button onclick="applyStatusChange('待處理')" class="status-btn w-full text-left px-4 py-3 rounded-xl font-bold text-sm hover:bg-slate-50" data-status="待處理">待處理</button>
-                <button onclick="applyStatusChange('執行中')" class="status-btn w-full text-left px-4 py-3 rounded-xl font-bold text-sm hover:bg-slate-50" data-status="執行中">執行中</button>
-                <button onclick="applyStatusChange('已完成')" class="status-btn w-full text-left px-4 py-3 rounded-xl font-bold text-sm hover:bg-slate-50" data-status="已完成">已完成</button>
+            <div class="p-4 border border-slate-700 rounded-xl opacity-50">
+                <h3 class="font-bold text-lg">夏季校園推廣音樂會</h3>
+                <p class="text-sm text-slate-400">尚未開放填表</p>
             </div>
         </div>
+    </div>
+
+    <div id="form-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
+        <h2 class="text-2xl font-bold mb-2">行政資料填報</h2>
+        <p class="text-slate-400 mb-8 italic">活動：2026 春季巡迴</p>
+        
+        <form id="orchestra-form" onsubmit="event.preventDefault(); showSection('success-section');">
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">1</span> 住宿調查
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <input type="radio" name="hotel" class="mr-3 accent-amber-500" required> 單人房 (需補差額)
+                    </label>
+                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
+                        <input type="radio" name="hotel" class="mr-3 accent-amber-500"> 雙人房 (隨機分配)
+                    </label>
+                </div>
+                <input type="text" placeholder="如有指定室友請填寫姓名" class="w-full mt-3 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none">
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span> 膳食調查
+                </h3>
+                <div class="flex gap-6 mb-3">
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500" required> 葷食</label>
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 全素</label>
+                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 奶蛋素</label>
+                </div>
+                <textarea placeholder="特別忌口或過敏 (如：不吃牛、海鮮過敏)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none h-20"></textarea>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
+                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span> 交通調查
+                </h3>
+                <select class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500" required>
+                    <option value="">請選擇往返方式</option>
+                    <option value="group">搭乘樂團大型遊覽車</option>
+                    <option value="self">自行前往 (高鐵/開車)</option>
+                    <option value="partial">單程搭車 / 單程自行前往</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-2">* 註：低音提琴、定音鼓等大件樂器由貨車統一搬運。</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button type="button" onclick="showSection('activity-section')" class="flex-1 border border-slate-600 py-3 rounded-lg hover:bg-slate-800 transition-all">返回</button>
+                <button type="submit" class="flex-[2] bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg shadow-lg transition-all">確認送出資料</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="success-section" class="max-w-md w-full glass-card p-10 rounded-2xl shadow-2xl hidden text-center">
+        <div class="text-6xl mb-6">🎻</div>
+        <h2 class="text-2xl font-bold mb-2">提交成功！</h2>
+        <p class="text-slate-400 mb-6">您的資料已更新至後端資料庫，<br>預祝演出順利。</p>
+        <button onclick="location.reload()" class="text-amber-500 hover:underline">返回系統首頁</button>
     </div>
 
     <script>
-        // 資料初始化
-        let orders = [
-            { id: "SDS-2024001", serviceId: "CS-99821", status: "待處理", receivedDate: "2024-05-30", dueDate: "2024-06-15", factory: "台積電 營運部", deviceName: "DELL Latitude 5420", userName: "王大同", userDept: "資通部", sn: "SN-DELL-88219", model: "L5420-A1", location: "AP6-DC2-R2-R22", isQuoted: "Yes", expenseType: "部門經費", missingParts: "主機板", remarks: "10/21 user 於 10/24 才能將筆電送給我們檢查，10/27 提供人損報價。", priority: "高", title: "筆電無法開機維修" },
-            { id: "SDS-2024002", serviceId: "CS-99822", status: "執行中", receivedDate: "2024-05-28", dueDate: "2024-06-10", factory: "聯發科 工程部", deviceName: "晶圓偵測感測器", userName: "李小明", userDept: "生產部", sn: "SN-SNS-11223", model: "SNS-X5", location: "P3-WAFER-ZONE", isQuoted: "No", expenseType: "user自費", missingParts: "無", remarks: "12/15 IT回覆依舊異常，12/16更換第二片主板後送回。", priority: "緊急", title: "感測器模組校準" },
-            { id: "SDS-2024003", serviceId: "CS-99823", status: "已完成", receivedDate: "2024-05-20", dueDate: "2024-06-01", factory: "艾司摩爾 設備部", deviceName: "伺服器節點", userName: "陳工程", userDept: "硬體室", sn: "SN-SVR-7766", model: "R740-XD", location: "DC-01-A4", isQuoted: "Yes", expenseType: "部門經費", missingParts: "無", remarks: "已於 6/1 完修並通知結案單位。", priority: "低", title: "伺服器硬碟擴充" },
-            { id: "SDS-2024004", serviceId: "CS-99824", status: "待處理", receivedDate: "2024-06-01", dueDate: "2024-06-20", factory: "輝達 研發部", deviceName: "H100 運算節點", userName: "張經理", userDept: "AI實驗室", sn: "SN-NV-55443", model: "HGX-H100", location: "LAB-RTX-09", isQuoted: "No", expenseType: "部門經費", missingParts: "冷卻液", remarks: "需更換冷卻系統管路並重新填充冷卻液。", priority: "中", title: "散熱系統故障排除" },
-            { id: "SDS-2024005", serviceId: "CS-99825", status: "待處理", receivedDate: "2024-06-02", dueDate: "2024-06-25", factory: "鴻海 製造部", deviceName: "自動化機械手臂", userName: "林組長", userDept: "自動化課", sn: "SN-FOX-9988", model: "ARM-V3", location: "LINE-7-C2", isQuoted: "Yes", expenseType: "部門經費", missingParts: "無", remarks: "韌體更新後導致動作偏移，需重新校正邏輯。", priority: "高", title: "自動化韌體更新" },
-            { id: "SDS-2024006", serviceId: "CS-99826", status: "執行中", receivedDate: "2024-06-05", dueDate: "2024-06-12", factory: "廣達 電腦部", deviceName: "核心交換機", userName: "周課長", userDept: "網路組", sn: "SN-SW-1122", model: "Nexus-9000", location: "IDF-ROOM-3", isQuoted: "Yes", expenseType: "部門經費", missingParts: "光纖模組", remarks: "部分埠口發生遺包現象，疑似模組老化。", priority: "高", title: "網路設備異常檢修" },
-            { id: "SDS-2024007", serviceId: "CS-99827", status: "已完成", receivedDate: "2024-06-10", dueDate: "2024-06-20", factory: "台積電 營運部", deviceName: "感應讀卡機", userName: "趙小姐", userDept: "行政課", sn: "SN-CARD-33", model: "HID-500", location: "ENTRANCE-A", isQuoted: "No", expenseType: "部門經費", missingParts: "無", remarks: "刷卡反應遲鈍，已重新設定網路參數解決。", priority: "低", title: "門禁系統校修" }
-        ];
-
-        const notifications = [
-            { id: 1, text: "新的維修單 SDS-2024005 已指派給您", time: "5 分鐘前", targetId: "SDS-2024005" },
-            { id: 2, text: "SDS-2024002 狀態已更新：執行中", time: "2 小時前", targetId: "SDS-2024002" }
-        ];
-
-        let state = {
-            searchQuery: '',
-            filterStatus: '全部',
-            filterFactory: '全部',
-            currentPage: 1,
-            itemsPerPage: 5,
-            selectedOrderId: null
-        };
-
-        // 登入處理
-        function handleLogin(e) {
-            e.preventDefault();
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('app-view').classList.remove('hidden');
-            initApp();
-        }
-
-        function handleLogout() {
-            location.reload();
-        }
-
-        // 初始化
-        function initApp() {
-            renderFactoryFilter();
-            renderNotifications();
-            render();
-            lucide.createIcons();
-        }
-
-        function renderFactoryFilter() {
-            const factories = ['全部', ...new Set(orders.map(o => o.factory))];
-            const select = document.getElementById('factory-filter');
-            select.innerHTML = factories.map(f => `<option value="${f}">${f === '全部' ? '所有廠區' : f}</option>`).join('');
-        }
-
-        function renderNotifications() {
-            const list = document.getElementById('notification-list');
-            list.innerHTML = notifications.map(n => `
-                <div onclick="showOrderDetails('${n.targetId}'); toggleNotifications();" class="p-4 border-b hover:bg-blue-50 cursor-pointer transition-colors">
-                    <p class="text-xs text-slate-700 leading-relaxed font-medium">${n.text}</p>
-                    <span class="text-[10px] text-slate-400 mt-1 block font-bold">${n.time}</span>
-                </div>
-            `).join('');
-        }
-
-        // 搜尋與篩選邏輯
-        function handleSearch(val) {
-            state.searchQuery = val;
-            state.currentPage = 1;
-            document.getElementById('clear-search').classList.toggle('hidden', !val);
-            render();
-        }
-
-        function clearSearch() {
-            document.getElementById('search-input').value = '';
-            handleSearch('');
-        }
-
-        function handleFilter() {
-            state.filterStatus = document.getElementById('status-filter').value;
-            state.filterFactory = document.getElementById('factory-filter').value;
-            state.currentPage = 1;
-            render();
-        }
-
-        // 核心渲染
-        function render() {
-            const filtered = orders.filter(o => {
-                const matchesSearch = o.id.toLowerCase().includes(state.searchQuery.toLowerCase()) || 
-                                    o.title.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-                                    o.deviceName.toLowerCase().includes(state.searchQuery.toLowerCase());
-                const matchesStatus = state.filterStatus === '全部' || o.status === state.filterStatus;
-                const matchesFactory = state.filterFactory === '全部' || o.factory === state.filterFactory;
-                return matchesSearch && matchesStatus && matchesFactory;
-            });
-
-            // 更新統計文字
-            document.getElementById('stats-text').textContent = `目前顯示符合檢索條件的第 ${state.currentPage} 頁共 ${filtered.length} 筆任務`;
-
-            const totalPages = Math.ceil(filtered.length / state.itemsPerPage);
-            const start = (state.currentPage - 1) * state.itemsPerPage;
-            const paginated = filtered.slice(start, start + state.itemsPerPage);
-
-            const tbody = document.getElementById('orders-table-body');
-            if (paginated.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-20 text-center"><div class="flex flex-col items-center gap-2 text-slate-400 font-medium"><i data-lucide="search" class="opacity-20 w-10 h-10"></i><p>查無符合條件的維修任務</p></div></td></tr>`;
-            } else {
-                tbody.innerHTML = paginated.map(o => `
-                    <tr onclick="showOrderDetails('${o.id}')" class="hover:bg-blue-50/40 cursor-pointer group transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="font-mono text-[10px] text-blue-500 font-black mb-0.5">${o.id}</div>
-                            <div class="font-bold text-slate-800 group-hover:text-blue-700 transition-colors">${o.title}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-bold text-slate-700">${o.factory}</div>
-                            <div class="text-[11px] text-slate-400 font-bold">${o.location}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-slate-600">${o.deviceName}</div>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-medium text-slate-500">${o.receivedDate}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getStatusClass(o.status)}">${o.status}</span>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-
-            renderPagination(totalPages);
-            lucide.createIcons();
-        }
-
-        function getStatusClass(status) {
-            if (status === '待處理') return 'bg-amber-50 text-amber-700 border-amber-200';
-            if (status === '執行中') return 'bg-blue-50 text-blue-700 border-blue-200';
-            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        }
-
-        function renderPagination(totalPages) {
-            const container = document.getElementById('pagination-container');
-            if (totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-
-            let buttons = '';
-            for (let i = 1; i <= totalPages; i++) {
-                buttons += `<button onclick="changePage(${i})" class="w-8 h-8 rounded-lg text-xs font-bold transition-all ${state.currentPage === i ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'bg-white border text-slate-600 hover:border-blue-300'}">${i}</button>`;
-            }
-
-            container.innerHTML = `
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest font-mono">Page ${state.currentPage} of ${totalPages}</span>
-                <div class="flex gap-2">
-                    <button onclick="changePage(${state.currentPage - 1})" ${state.currentPage === 1 ? 'disabled' : ''} class="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 shadow-sm"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                    <div class="flex gap-1">${buttons}</div>
-                    <button onclick="changePage(${state.currentPage + 1})" ${state.currentPage === totalPages ? 'disabled' : ''} class="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50 shadow-sm"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-                </div>
-            `;
-        }
-
-        function changePage(p) {
-            state.currentPage = p;
-            render();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // 詳情頁面處理
-        function showOrderDetails(id) {
-            state.selectedOrderId = id;
-            const order = orders.find(o => o.id === id);
+        function showSection(sectionId) {
+            // 隱藏所有區塊
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('activity-section').classList.add('hidden');
+            document.getElementById('form-section').classList.add('hidden');
+            document.getElementById('success-section').classList.add('hidden');
             
-            document.getElementById('dashboard-section').classList.add('hidden');
-            document.getElementById('details-section').classList.remove('hidden');
-            document.getElementById('details-subtitle').textContent = `正在管理單號 ${id} 的作業內容`;
-
-            const content = document.getElementById('details-content');
-            content.innerHTML = `
-                <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in">
-                    <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <button onclick="showDashboard()" class="text-sm font-bold text-slate-500 flex items-center gap-1 group transition-colors hover:text-slate-800">
-                            <i data-lucide="chevron-left" class="w-4.5 h-4.5 group-hover:-translate-x-1 transition-transform"></i> 返回清單
-                        </button>
-                        <button onclick="openStatusModal()" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 transition-all active:scale-95 hover:bg-blue-700">更新維修進度</button>
-                    </div>
-
-                    <div class="p-8 space-y-10">
-                        <div class="flex flex-col lg:flex-row justify-between gap-6">
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-3">
-                                    <span class="bg-slate-800 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono tracking-widest">${order.id}</span>
-                                    <h1 class="text-3xl font-black text-slate-900 tracking-tight">${order.title}</h1>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-4 text-slate-500 text-sm font-medium">
-                                    <span class="flex items-center gap-1.5 text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-lg"><i data-lucide="map-pin" class="w-4 h-4"></i>${order.factory}</span>
-                                    <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                    <span class="flex items-center gap-1.5 text-slate-700"><i data-lucide="user" class="w-4 h-4 text-slate-400"></i> 報修人：${order.userName} (${order.userDept})</span>
-                                    <span class="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                    <span class="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600">客服單號：${order.serviceId}</span>
-                                </div>
-                            </div>
-                            <div class="flex gap-4">
-                                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center min-w-[130px] shadow-sm">
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">報修日期</p>
-                                    <p class="font-black text-slate-700">${order.receivedDate}</p>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center min-w-[130px] shadow-sm">
-                                    <p class="text-[10px] font-bold text-blue-400 uppercase mb-1.5 tracking-wider">當前狀態</p>
-                                    <p id="detail-status-text" class="font-black text-blue-700">${order.status}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div class="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1.5">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 tracking-wider"><i data-lucide="settings" class="text-slate-300 w-3.5 h-3.5"></i> 設備名稱</p>
-                                <p class="font-bold text-slate-800 text-lg leading-none">${order.deviceName}</p>
-                            </div>
-                            <div class="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1.5">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 tracking-wider"><i data-lucide="hash" class="text-slate-300 w-3.5 h-3.5"></i> 序號 / 型號</p>
-                                <p class="font-bold text-slate-800 leading-none">${order.sn}</p>
-                                <p class="text-[10px] text-slate-500 font-bold">${order.model}</p>
-                            </div>
-                            <div class="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1.5">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 tracking-wider"><i data-lucide="map-pin" class="text-slate-300 w-3.5 h-3.5"></i> 設備詳細位置</p>
-                                <p class="font-bold text-slate-800 leading-none">${order.location}</p>
-                            </div>
-                            <div class="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm space-y-1.5">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 tracking-wider"><i data-lucide="dollar-sign" class="text-slate-300 w-3.5 h-3.5"></i> 報價 / 經費</p>
-                                <p class="font-bold text-slate-800 leading-none">已報價: ${order.isQuoted}</p>
-                                <p class="text-[10px] text-slate-500 font-bold">${order.expenseType}</p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div class="lg:col-span-2 space-y-8">
-                                <section>
-                                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-3">
-                                        <div class="w-8 h-1 bg-blue-600 rounded-full"></div> 維修備註欄 (歷史紀錄)
-                                    </h3>
-                                    <div class="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 text-slate-700 leading-relaxed min-h-[150px] shadow-inner text-lg">
-                                        ${order.remarks}
-                                    </div>
-                                </section>
-                                <section class="p-6 border border-dashed border-amber-200 rounded-2xl bg-amber-50/20 shadow-sm">
-                                   <div class="flex items-center gap-2 mb-2">
-                                       <i data-lucide="alert-circle" class="text-amber-500 w-4.5 h-4.5"></i>
-                                       <p class="text-xs font-black text-amber-600 uppercase tracking-widest">缺料零件登記</p>
-                                   </div>
-                                   <p class="text-2xl font-black text-slate-800">${order.missingParts}</p>
-                                </section>
-                            </div>
-
-                            <aside class="p-6 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
-                                <div class="absolute -top-6 -right-6 opacity-10 rotate-12 group-hover:rotate-45 transition-transform duration-700 text-blue-400">
-                                    <i data-lucide="history" class="w-36 h-36"></i>
-                                </div>
-                                <h3 class="font-bold mb-8 text-sm flex items-center gap-2 text-blue-400 relative z-10">
-                                    <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping"></div> 完修進度追蹤
-                                </h3>
-                                <div class="space-y-8 relative z-10">
-                                    <div class="absolute left-[11px] top-2 bottom-2 w-px bg-slate-700"></div>
-                                    <div class="flex gap-4 relative">
-                                        <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center border-4 border-slate-900 shadow-[0_0_15px_rgba(37,99,235,0.4)]"><i data-lucide="check-circle-2" class="w-3 h-3 text-white"></i></div>
-                                        <div>
-                                            <p class="text-sm font-bold">報單日期已建立</p>
-                                            <p class="text-[11px] text-slate-400 font-bold font-mono mt-1">${order.receivedDate} 09:00 AM</p>
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-4 relative">
-                                        <div id="timeline-status-icon" class="w-6 h-6 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg ${order.status === '已完成' ? 'bg-emerald-500' : 'bg-slate-700'}">
-                                            <div class="w-2 h-2 rounded-full ${order.status === '已完成' ? 'bg-white' : 'bg-slate-500'}"></div>
-                                        </div>
-                                        <div>
-                                            <p id="timeline-status-text" class="text-sm font-bold ${order.status === '已完成' ? 'text-white' : 'text-slate-500 italic'}">
-                                                ${order.status === '已完成' ? '單據已通知結案單位' : '目前維修進行中...'}
-                                            </p>
-                                            <p id="timeline-status-sub" class="text-[10px] text-slate-500 font-medium mt-1 uppercase tracking-wider">${order.status}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </aside>
-                        </div>
-                    </div>
-                </div>
-            `;
-            lucide.createIcons();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showDashboard() {
-            document.getElementById('details-section').classList.add('hidden');
-            document.getElementById('dashboard-section').classList.remove('hidden');
-            render();
-        }
-
-        // Modal 與 狀態更新
-        function openStatusModal() {
-            const modal = document.getElementById('status-modal');
-            modal.classList.remove('hidden');
-            
-            // 標記當前選中狀態
-            const order = orders.find(o => o.id === state.selectedOrderId);
-            document.querySelectorAll('.status-btn').forEach(btn => {
-                if(btn.dataset.status === order.status) {
-                    btn.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
-                } else {
-                    btn.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
-                }
-            });
-            lucide.createIcons();
-        }
-
-        function closeStatusModal() {
-            document.getElementById('status-modal').classList.add('hidden');
-        }
-
-        function applyStatusChange(newStatus) {
-            const order = orders.find(o => o.id === state.selectedOrderId);
-            order.status = newStatus;
-            
-            // 更新 UI
-            document.getElementById('detail-status-text').textContent = newStatus;
-            const icon = document.getElementById('timeline-status-icon');
-            const text = document.getElementById('timeline-status-text');
-            const sub = document.getElementById('timeline-status-sub');
-
-            if(newStatus === '已完成') {
-                icon.className = "w-6 h-6 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg bg-emerald-500";
-                icon.innerHTML = '<div class="w-2 h-2 rounded-full bg-white"></div>';
-                text.className = "text-sm font-bold text-white";
-                text.textContent = "單據已通知結案單位";
-            } else {
-                icon.className = "w-6 h-6 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg bg-slate-700";
-                icon.innerHTML = '<div class="w-2 h-2 rounded-full bg-slate-500"></div>';
-                text.className = "text-sm font-bold text-slate-500 italic";
-                text.textContent = "目前維修進行中...";
-            }
-            sub.textContent = newStatus;
-
-            closeStatusModal();
-        }
-
-        // 通知切換
-        function toggleNotifications() {
-            document.getElementById('notification-dropdown').classList.toggle('hidden');
-        }
-
-        // 點擊外部關閉通知
-        window.onclick = function(event) {
-            if (!event.target.closest('.relative')) {
-                const dropdown = document.getElementById('notification-dropdown');
-                if (!dropdown.classList.contains('hidden')) {
-                    dropdown.classList.add('hidden');
-                }
-            }
+            // 顯示指定區塊
+            document.getElementById(sectionId).classList.remove('hidden');
         }
     </script>
 </body>
