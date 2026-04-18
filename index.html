@@ -1,125 +1,331 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orchestra Admin - 團員行政系統</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-    </style>
-</head>
-<body class="min-h-screen flex items-center justify-center p-4">
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Plus, Minus, RotateCcw, Trash2, Settings, History, Info, 
+  Edit2, Check, Calculator, Users, LogOut, Share2, RefreshCw, 
+  PlusCircle, ArrowRight, X, AlertTriangle
+} from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
-    <div id="login-section" class="max-w-md w-full glass-card p-8 rounded-2xl shadow-2xl">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold tracking-widest">長榮交響樂</h1>
-            <p class="text-slate-400 mt-2">團員行政管理系統</p>
-        </div>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm mb-1 text-slate-300">團員編號</label>
-                <input type="text" placeholder="Ex: VN-001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
-            </div>
-            <div>
-                <label class="block text-sm mb-1 text-slate-300">密碼</label>
-                <input type="password" placeholder="••••••••" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
-            </div>
-            <button onclick="showSection('activity-section')" class="w-full bg-amber-600 hover:bg-amber-500 transition-all text-white font-bold py-3 rounded-lg mt-4 shadow-lg">登入系統</button>
-        </div>
-    </div>
+// --- Firebase 初始化 ---
+let db = null;
+let auth = null;
+let appId = 'mahjong-pro-sync-v2';
 
-    <div id="activity-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
-        <h2 class="text-2xl font-bold mb-6 border-b border-slate-700 pb-4">選擇參與巡演活動</h2>
-        <div class="space-y-4">
-            <div class="p-4 border border-slate-700 rounded-xl hover:bg-slate-800 cursor-pointer transition-all group" onclick="showSection('form-section')">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold text-lg group-hover:text-amber-400">2026 春季巡迴：貝多芬之夜</h3>
-                        <p class="text-sm text-slate-400">地點：國家音樂廳、衛武營 | 日期：2026/03/15 - 03/20</p>
+try {
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+  if (firebaseConfig) {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    appId = typeof __app_id !== 'undefined' ? __app_id : 'mahjong-pro-sync-v2';
+  }
+} catch (e) { console.error("Firebase Init Failed:", e); }
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [roomId, setRoomId] = useState("");
+  const [isJoined, setIsJoined] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // --- 遊戲同步資料 ---
+  const [roomData, setRoomData] = useState({
+    base: 100, point: 20, playerNames: ['東', '南', '西', '北'],
+    scores: [0, 0, 0, 0], history: [], dealerIdx: 0, streak: 0, setupMode: true
+  });
+
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [tempName, setTempName] = useState("");
+  const [winnerIdx, setWinnerIdx] = useState(null);
+  const [isSelfDraw, setIsSelfDraw] = useState(false);
+  const [loserIdx, setLoserIdx] = useState(null);
+  const [tai, setTai] = useState(0);
+
+  useEffect(() => {
+    if (!auth) { setIsOffline(true); return; }
+    signInAnonymously(auth).catch(() => setIsOffline(true));
+    return onAuthStateChanged(auth, u => setUser(u));
+  }, []);
+
+  useEffect(() => {
+    if (!isJoined || !roomId) return;
+    if (isOffline || !db) {
+      const local = localStorage.getItem(`mj_room_${roomId}`);
+      if (local) setRoomData(JSON.parse(local));
+      return;
+    }
+
+    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const unsubscribe = onSnapshot(roomRef, (snap) => {
+      if (snap.exists()) {
+        setRoomData(snap.data());
+      } else {
+        updateCloud(roomData);
+      }
+    });
+    return () => unsubscribe();
+  }, [isJoined, roomId, isOffline]);
+
+  const updateCloud = async (newData) => {
+    const mergedData = { ...roomData, ...newData, lastUpdated: Date.now() };
+    setRoomData(mergedData);
+    if (isOffline || !db || !user) {
+      localStorage.setItem(`mj_room_${roomId}`, JSON.stringify(mergedData));
+      return;
+    }
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), mergedData, { merge: true });
+    } catch (err) { setIsOffline(true); }
+  };
+
+  const handleResetGame = async () => {
+    setIsResetting(true);
+    const resetData = {
+      scores: [0, 0, 0, 0],
+      history: [],
+      streak: 0,
+      dealerIdx: 0,
+      setupMode: false // 保持在遊戲畫面，不回設定頁
+    };
+    await updateCloud(resetData);
+    setIsResetting(false);
+    setShowResetModal(false);
+  };
+
+  const handleCreateNewRoom = () => {
+    const randomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+    setRoomId(randomId);
+    setRoomData({
+      base: 100, point: 20, playerNames: ['東', '南', '西', '北'],
+      scores: [0, 0, 0, 0], history: [], dealerIdx: 0, streak: 0, setupMode: true
+    });
+    setIsJoined(true);
+  };
+
+  const preview = useMemo(() => {
+    if (winnerIdx === null || (!isSelfDraw && loserIdx === null)) return null;
+    const getB = (i1, i2 = null) => (i1 === roomData.dealerIdx || (i2 !== null && i2 === roomData.dealerIdx)) ? 2 * roomData.streak + 1 : 0;
+    if (isSelfDraw) {
+      return roomData.playerNames.map((n, i) => i === winnerIdx ? null : { name: n, amount: roomData.base + ((tai + getB(winnerIdx, i)) * roomData.point), bonus: getB(winnerIdx, i) }).filter(Boolean);
+    } else {
+      const b = getB(winnerIdx, loserIdx);
+      return [{ name: roomData.playerNames[loserIdx], amount: roomData.base + ((tai + b) * roomData.point), bonus: b }];
+    }
+  }, [winnerIdx, isSelfDraw, loserIdx, tai, roomData]);
+
+  const handleCalculate = () => {
+    if (!preview) return;
+    let ns = [...roomData.scores]; let ch = [0,0,0,0]; let tw = 0;
+    preview.forEach(p => { const i = roomData.playerNames.indexOf(p.name); ns[i] -= p.amount; ch[i] -= p.amount; tw += p.amount; });
+    ns[winnerIdx] += tw; ch[winnerIdx] += tw;
+    const nh = [{ winner: roomData.playerNames[winnerIdx], isSelfDraw, tai, dealer: roomData.playerNames[roomData.dealerIdx], streak: roomData.streak, changes: ch, bonus: preview[0].bonus }, ...roomData.history];
+    updateCloud({ scores: ns, history: nh });
+    setWinnerIdx(null); setLoserIdx(null); setTai(0); setIsSelfDraw(false);
+  };
+
+  // --- UI 元件 ---
+
+  if (!isJoined) {
+    return (
+      <div className="min-h-screen bg-[#C41E3A] flex flex-col items-center justify-center p-6 text-white font-sans">
+        <div className="w-full max-w-md space-y-10 animate-in fade-in zoom-in-95">
+          <div className="text-center">
+            <div className="inline-block bg-yellow-400 p-4 rounded-3xl shadow-2xl mb-4 transform -rotate-3">
+               <Calculator size={48} className="text-[#C41E3A]"/>
+            </div>
+            <h1 className="text-6xl font-black text-yellow-400 italic tracking-tighter">MJ SYNC</h1>
+            <p className="text-yellow-100 font-bold tracking-[0.3em] text-[10px] mt-2">MULTI-USER ACCOUNTANT</p>
+          </div>
+
+          <div className="space-y-4">
+            <button onClick={handleCreateNewRoom} className="w-full bg-yellow-400 text-[#C41E3A] py-6 rounded-3xl text-2xl font-black shadow-[0_8px_0_0_#A87E00] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center gap-3">
+              <PlusCircle size={28}/> 開新房間
+            </button>
+
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-white/20"></div>
+              <span className="text-xs font-bold text-white/30 uppercase">或輸入房號</span>
+              <div className="flex-1 h-px bg-white/20"></div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white/10 space-y-4">
+              <input type="text" placeholder="房號" className="w-full text-4xl font-black p-4 bg-white/10 rounded-2xl border-2 border-white/10 focus:border-yellow-400 text-center uppercase text-white outline-none" value={roomId} onChange={e => setRoomId(e.target.value.toUpperCase())} />
+              <button onClick={() => roomId && setIsJoined(true)} disabled={!roomId} className="w-full bg-white text-[#C41E3A] py-4 rounded-2xl text-xl font-black shadow-lg disabled:opacity-20 flex items-center justify-center gap-2">
+                進入房間 <ArrowRight size={20}/>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-28 font-sans">
+      {/* 自定義重置彈窗 (Modal) */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#C41E3A]/90 backdrop-blur-sm animate-in fade-in">
+           <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl text-center space-y-6 animate-in zoom-in-95">
+              <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-[#C41E3A]">
+                <AlertTriangle size={40}/>
+              </div>
+              <div>
+                <h3 className="text-2xl font-black text-gray-800">確定重置？</h3>
+                <p className="text-gray-400 font-bold text-sm mt-2">這會清空房間內「所有人」的分數與歷史紀錄，且無法復原。</p>
+              </div>
+              <div className="space-y-3">
+                <button onClick={handleResetGame} disabled={isResetting} className="w-full bg-[#C41E3A] text-white py-4 rounded-2xl font-black text-lg shadow-lg flex items-center justify-center gap-2">
+                   {isResetting ? <RefreshCw className="animate-spin"/> : "確定重置"}
+                </button>
+                <button onClick={() => setShowResetModal(false)} className="w-full bg-gray-100 text-gray-400 py-3 rounded-2xl font-bold">先不要</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* 頂部 Dashboard */}
+      <div className="bg-[#C41E3A] p-4 pt-10 pb-16 rounded-b-[3.5rem] shadow-2xl relative">
+        <div className="flex justify-between items-center mb-6 px-4">
+          <div>
+            <h1 className="text-xl font-black text-yellow-400 italic">MJ DASHBOARD</h1>
+            <p className="text-[9px] font-bold text-white/50 tracking-[0.2em] uppercase">Room: {roomId}</p>
+          </div>
+          <div className="flex gap-2">
+             <button onClick={() => {
+                const dummy = document.createElement("input");
+                document.body.appendChild(dummy);
+                dummy.value = `房號: ${roomId}`;
+                dummy.select();
+                document.execCommand("copy");
+                document.body.removeChild(dummy);
+             }} className="p-3 bg-white/10 rounded-2xl text-white active:bg-white/20"><Share2 size={18}/></button>
+             <button onClick={() => setShowResetModal(true)} className="p-3 bg-white/10 rounded-2xl text-white active:bg-white/20"><RotateCcw size={18}/></button>
+             <button onClick={() => setIsJoined(false)} className="p-3 bg-white/10 rounded-2xl text-white active:bg-white/20"><LogOut size={18}/></button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 px-2">
+          {roomData.playerNames.map((name, i) => (
+            <div key={i} className={`relative p-5 rounded-3xl bg-white shadow-xl border-t-8 flex flex-col items-center transition-all ${roomData.scores[i] >= 0 ? 'border-green-500' : 'border-red-500'}`}>
+               <button onClick={() => { setEditingIdx(i); setTempName(name); }} className="absolute top-2 right-2 p-1 text-gray-200"><Edit2 size={12}/></button>
+               <div className="text-[10px] font-black text-gray-300 h-4 mb-1">{i === roomData.dealerIdx ? `莊 連${roomData.streak}` : ''}</div>
+               {editingIdx === i ? (
+                  <input autoFocus className="w-full text-center font-black border-b-2 border-yellow-400 outline-none bg-yellow-50 text-lg" value={tempName} onChange={e => setTempName(e.target.value)} onBlur={() => { const n = [...roomData.playerNames]; n[i] = tempName || name; updateCloud({playerNames: n}); setEditingIdx(null); }}/>
+               ) : ( <div className="text-xl font-black text-gray-800 truncate w-full text-center">{name}</div> )}
+               <div className={`text-3xl font-black mt-1 ${roomData.scores[i] >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                 {roomData.scores[i] > 0 ? `+${roomData.scores[i]}` : roomData.scores[i]}
+               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 結算區 */}
+      {roomData.setupMode ? (
+        <div className="p-6">
+           <div className="bg-white rounded-[2.5rem] p-8 shadow-xl space-y-6 border-t-[12px] border-yellow-400">
+             <h2 className="text-2xl font-black text-center text-gray-800">開桌設定</h2>
+             <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">底 (BASE)</label>
+                 <input type="number" value={roomData.base} onChange={e => updateCloud({base: Number(e.target.value)})} className="w-full text-2xl font-black p-4 bg-gray-50 rounded-2xl outline-none border-2 border-gray-100 focus:border-yellow-400"/>
+               </div>
+               <div className="space-y-1">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">台 (POINT)</label>
+                 <input type="number" value={roomData.point} onChange={e => updateCloud({point: Number(e.target.value)})} className="w-full text-2xl font-black p-4 bg-gray-50 rounded-2xl outline-none border-2 border-gray-100 focus:border-yellow-400"/>
+               </div>
+             </div>
+             <div className="space-y-3">
+               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">玩家名單</label>
+               <div className="grid grid-cols-2 gap-2">
+                 {roomData.playerNames.map((n, i) => (
+                   <input key={i} type="text" value={n} onChange={e => { const names = [...roomData.playerNames]; names[i] = e.target.value; updateCloud({playerNames: names}); }} className="p-4 bg-gray-50 rounded-2xl font-black text-sm border-2 border-gray-100 focus:border-yellow-400 outline-none text-center"/>
+                 ))}
+               </div>
+             </div>
+             <button onClick={() => updateCloud({setupMode: false})} className="w-full bg-[#C41E3A] text-white py-5 rounded-3xl text-xl font-black shadow-xl active:scale-95 transition-all">正式開局</button>
+           </div>
+        </div>
+      ) : (
+        <div className="px-4 -mt-10 space-y-5 relative z-20">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl p-7 border border-gray-100">
+            <div className="flex justify-between items-center mb-8">
+               <h2 className="font-black text-xl text-gray-800 tracking-tighter">快速結算</h2>
+               <div className="flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
+                  <button onClick={() => updateCloud({streak: Math.max(0, roomData.streak-1)})} className="p-2 text-[#C41E3A] bg-white rounded-xl shadow-sm"><Minus size={16}/></button>
+                  <div className="px-4 text-center"><span className="text-[10px] font-black text-gray-400 block uppercase leading-none mb-1">連莊</span><span className="font-black text-xl leading-none">{roomData.streak}</span></div>
+                  <button onClick={() => updateCloud({streak: roomData.streak+1})} className="p-2 text-[#C41E3A] bg-white rounded-xl shadow-sm"><Plus size={16}/></button>
+               </div>
+            </div>
+            <div className="space-y-8">
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-l-4 border-yellow-400 pl-2">1. 莊家</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {roomData.playerNames.map((n, i) => ( <button key={i} onClick={() => updateCloud({dealerIdx: i, streak: i===roomData.dealerIdx ? roomData.streak : 0})} className={`py-4 rounded-2xl text-xs font-black transition-all ${roomData.dealerIdx===i ? 'bg-yellow-400 text-[#C41E3A] shadow-lg ring-2 ring-yellow-500' : 'bg-gray-50 text-gray-400'}`}>{n}</button> ))}
                     </div>
-                    <span class="text-amber-500">→</span>
-                </div>
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-l-4 border-[#C41E3A] pl-2">2. 贏家</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {roomData.playerNames.map((n, i) => ( <button key={i} onClick={() => setWinnerIdx(i)} className={`py-4 rounded-2xl text-xs font-black transition-all ${winnerIdx===i ? 'bg-[#C41E3A] text-white shadow-xl' : 'bg-gray-50 text-gray-400'}`}>{n}</button> ))}
+                    </div>
+                  </div>
+               </div>
+               <div className="flex gap-4">
+                  <div className="flex-1 space-y-3">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">3. 贏法</p>
+                    <div className="flex bg-gray-100 p-2 rounded-[1.5rem] gap-1">
+                      <button onClick={() => setIsSelfDraw(true)} className={`flex-1 py-3 rounded-2xl text-xs font-black transition-all ${isSelfDraw ? 'bg-white shadow-md text-[#C41E3A]' : 'text-gray-400'}`}>自摸</button>
+                      <button onClick={() => setIsSelfDraw(false)} className={`flex-1 py-3 rounded-2xl text-xs font-black transition-all ${!isSelfDraw ? 'bg-white shadow-md text-[#C41E3A]' : 'text-gray-400'}`}>放槍</button>
+                    </div>
+                  </div>
+                  {!isSelfDraw && (
+                    <div className="flex-1 space-y-3">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">4. 槍手</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {roomData.playerNames.map((n, i) => ( <button key={i} disabled={i===winnerIdx} onClick={() => setLoserIdx(i)} className={`py-3 rounded-2xl text-xs font-black ${loserIdx===i ? 'bg-gray-800 text-white shadow-xl' : 'bg-gray-50 text-gray-400 disabled:opacity-10'}`}>{n}</button> ))}
+                      </div>
+                    </div>
+                  )}
+               </div>
+               <div className="space-y-3">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">5. 手動台數</p>
+                  <div className="flex items-center gap-8 bg-gray-50 p-5 rounded-[2rem] border border-gray-100">
+                    <button onClick={() => setTai(Math.max(0, tai-1))} className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-[#C41E3A] active:scale-90 border border-gray-100"><Minus size={24}/></button>
+                    <div className="flex-1 text-center"><span className="text-6xl font-black text-gray-800">{tai}</span><span className="text-xs font-bold text-gray-400 ml-1">台</span></div>
+                    <button onClick={() => setTai(tai+1)} className="w-16 h-16 bg-white rounded-full shadow-lg flex items-center justify-center text-[#C41E3A] active:scale-90 border border-gray-100"><Plus size={24}/></button>
+                  </div>
+               </div>
+               {preview && (
+                 <div className="bg-yellow-50 rounded-[2rem] p-6 border-2 border-yellow-200 space-y-4 animate-in zoom-in-95">
+                    <div className="flex items-center gap-2 text-[#C41E3A] font-black text-sm uppercase"><Calculator size={16}/> 計算公式</div>
+                    {preview.map((p, i) => ( <div key={i} className="flex justify-between items-center bg-white/60 p-4 rounded-2xl"><span className="text-sm font-black text-gray-600">{p.name} 賠出</span><div className="text-right"><div className="text-[10px] font-mono text-gray-400">{roomData.base}+({tai}{p.bonus > 0 ? `+${p.bonus}莊` : ''})×{roomData.point}</div><div className="text-2xl font-black text-[#C41E3A]">${p.amount}</div></div></div> ))}
+                 </div>
+               )}
+               <button disabled={!preview} onClick={handleCalculate} className="w-full bg-yellow-400 text-[#C41E3A] py-7 rounded-[2rem] text-3xl font-black shadow-2xl active:translate-y-1 transition-all">結算入帳</button>
             </div>
-            <div class="p-4 border border-slate-700 rounded-xl opacity-50">
-                <h3 class="font-bold text-lg">夏季校園推廣音樂會</h3>
-                <p class="text-sm text-slate-400">尚未開放填表</p>
+          </div>
+          <div className="bg-white rounded-[2.5rem] shadow-xl p-8 mb-12 border border-gray-100">
+            <div className="flex justify-between items-center mb-6"><h3 className="font-black text-lg text-gray-800 tracking-tighter">歷史戰報</h3><button onClick={() => { const last = roomData.history[0]; const ns = roomData.scores.map((s, i) => s - last.changes[i]); updateCloud({ scores: ns, history: roomData.history.slice(1) }); }} disabled={roomData.history.length === 0} className="text-xs font-black text-gray-300 flex items-center gap-1 disabled:opacity-20"><Trash2 size={16}/> 撤銷</button></div>
+            <div className="space-y-4">
+               {roomData.history.length === 0 ? <div className="text-center py-12 text-gray-300 font-bold italic text-sm">目前的局勢還很平靜...</div> : roomData.history.map((h, i) => ( <div key={i} className="flex justify-between items-center p-5 bg-gray-50 rounded-3xl border-l-8 border-yellow-400 animate-in slide-in-from-left-4"><div className="flex-1"><div className="text-md font-black text-gray-700">{h.winner} <span className="text-[#C41E3A] font-black">{h.isSelfDraw ? '自摸' : '胡牌'}</span><span className="text-gray-400 ml-2 text-xs font-bold">({h.tai}{h.bonus > 0 ? `+${h.bonus}莊` : ''}台)</span></div><div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tighter leading-none">莊: {h.dealer} (連{h.streak})</div></div><div className="text-right"><div className="text-2xl font-black text-green-600">+{Math.max(...h.changes)}</div><div className="text-[10px] font-mono text-gray-200 font-bold tracking-widest">#{roomData.history.length-i}</div></div></div> ))}
             </div>
+          </div>
         </div>
+      )}
+
+      {/* 固定頁尾 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl p-5 border-t border-gray-100 flex justify-between items-center px-8 shadow-2xl">
+         <div className="flex flex-col"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 leading-none">Room</span><span className="text-lg font-black text-[#C41E3A] leading-none">{roomId}</span></div>
+         <div className={`px-3 py-1 rounded-full text-[9px] font-black flex items-center gap-1 ${isOffline ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}><div className={`w-1.5 h-1.5 rounded-full ${isOffline ? 'bg-yellow-500' : 'bg-green-500 animate-pulse'}`}></div>{isOffline ? '離線模式' : '雲端同步中'}</div>
+         <div className="flex flex-col items-right text-right"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 leading-none">Base/Point</span><span className="text-sm font-black text-gray-700 leading-none">${roomData.base} / ${roomData.point}</span></div>
+      </div>
     </div>
+  );
+};
 
-    <div id="form-section" class="max-w-2xl w-full glass-card p-8 rounded-2xl shadow-2xl hidden">
-        <h2 class="text-2xl font-bold mb-2">行政資料填報</h2>
-        <p class="text-slate-400 mb-8 italic">活動：2026 春季巡迴</p>
-        
-        <form id="orchestra-form" onsubmit="event.preventDefault(); showSection('success-section');">
-            <div class="mb-8">
-                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
-                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">1</span> 住宿調查
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
-                        <input type="radio" name="hotel" class="mr-3 accent-amber-500" required> 單人房 (需補差額)
-                    </label>
-                    <label class="flex items-center p-3 bg-slate-800 rounded-lg border border-slate-700">
-                        <input type="radio" name="hotel" class="mr-3 accent-amber-500"> 雙人房 (隨機分配)
-                    </label>
-                </div>
-                <input type="text" placeholder="如有指定室友請填寫姓名" class="w-full mt-3 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none">
-            </div>
-
-            <div class="mb-8">
-                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
-                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">2</span> 膳食調查
-                </h3>
-                <div class="flex gap-6 mb-3">
-                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500" required> 葷食</label>
-                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 全素</label>
-                    <label class="flex items-center"><input type="radio" name="meal" class="mr-2 accent-amber-500"> 奶蛋素</label>
-                </div>
-                <textarea placeholder="特別忌口或過敏 (如：不吃牛、海鮮過敏)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none h-20"></textarea>
-            </div>
-
-            <div class="mb-8">
-                <h3 class="text-amber-400 font-bold mb-4 flex items-center">
-                    <span class="bg-amber-400 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center mr-2 text-xs">3</span> 交通調查
-                </h3>
-                <select class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500" required>
-                    <option value="">請選擇往返方式</option>
-                    <option value="group">搭乘樂團大型遊覽車</option>
-                    <option value="self">自行前往 (高鐵/開車)</option>
-                    <option value="partial">單程搭車 / 單程自行前往</option>
-                </select>
-                <p class="text-xs text-slate-500 mt-2">* 註：低音提琴、定音鼓等大件樂器由貨車統一搬運。</p>
-            </div>
-
-            <div class="flex gap-4">
-                <button type="button" onclick="showSection('activity-section')" class="flex-1 border border-slate-600 py-3 rounded-lg hover:bg-slate-800 transition-all">返回</button>
-                <button type="submit" class="flex-[2] bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg shadow-lg transition-all">確認送出資料</button>
-            </div>
-        </form>
-    </div>
-
-    <div id="success-section" class="max-w-md w-full glass-card p-10 rounded-2xl shadow-2xl hidden text-center">
-        <div class="text-6xl mb-6">🎻</div>
-        <h2 class="text-2xl font-bold mb-2">提交成功！</h2>
-        <p class="text-slate-400 mb-6">您的資料已更新至後端資料庫，<br>預祝演出順利。</p>
-        <button onclick="location.reload()" class="text-amber-500 hover:underline">返回系統首頁</button>
-    </div>
-
-    <script>
-        function showSection(sectionId) {
-            // 隱藏所有區塊
-            document.getElementById('login-section').classList.add('hidden');
-            document.getElementById('activity-section').classList.add('hidden');
-            document.getElementById('form-section').classList.add('hidden');
-            document.getElementById('success-section').classList.add('hidden');
-            
-            // 顯示指定區塊
-            document.getElementById(sectionId).classList.remove('hidden');
-        }
-    </script>
-</body>
-</html>
+export default App;
